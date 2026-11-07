@@ -1,0 +1,14 @@
+AGENDA DE CORTES - como instalar no celular
+
+1) Coloque TODOS os arquivos desta pasta na raiz de um repositório do GitHub
+   (index.html, manifest.json, sw.js e os icones .png).
+2) Ative o GitHub Pages: Settings > Pages > Deploy from a branch > main > / (root).
+3) Abra o endereço gerado no Chrome do celular e use "Adicionar à tela inicial" / "Instalar app".
+   O app abre em tela cheia, com a logo, e funciona sem internet depois do primeiro acesso.
+4) Para gerar o APK: no site pwabuilder.com, cole o endereço do GitHub Pages e baixe o pacote Android.
+
+Atualizando o app depois: troque o index.html no GitHub e, em sw.js, mude o numero em
+const C='agenda-v1' (para agenda-v2, v3...) para os celulares pegarem a versão nova.
+
+IMPORTANTE: os dados ficam salvos no aparelho. Use Ajustes (engrenagem) > Backup e restaurar
+de vez em quando para guardar uma cópia.
