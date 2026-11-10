@@ -82,7 +82,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const DIAS=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
 let S={ap:[],rec:[]},tab='hoje',cm=new Date(),hm=new Date(),sel=iso(new Date());
-function load(){try{const r=localStorage.getItem('agenda-cortes');if(r)S=JSON.parse(r)}catch(e){}if(!S.cl)S.cl=[];if(!S.bl)S.bl=[];if(!S.st)S.st=[]}
+function load(){try{const r=localStorage.getItem('agenda-cortes');if(r)S=JSON.parse(r)}catch(e){}if(!S.cl)S.cl=[];if(!S.bl)S.bl=[];if(!S.st)S.st=[];if(!S.cfg)S.cfg={}}
 function save(){try{localStorage.setItem('agenda-cortes',JSON.stringify(S))}catch(e){}}
 function gen(until){const td=new Date();td.setHours(0,0,0,0);let ch=false;let end=new Date(td.getFullYear()+1,td.getMonth(),td.getDate());if(until&&until>end)end=until;const nd=Math.round((end-td)/864e5);const have=new Set(S.ap.filter(a=>a.rid).map(a=>a.rid+a.date));
 S.rec.forEach(r=>{if(!r.on)return;const st=parse(r.start),ds=[];
@@ -159,6 +159,15 @@ function closeS(){$('#bk').style.display='none';$('#sh').style.display='none'}
 function fab(){if(tab==='cl')cSheet();else if(tab==='es')pSheet();else sheet(null,sel)}
 function saleTot(a){return (a.sales||[]).reduce((s,x)=>s+x.price*x.qty,0)}
 function fdt(s){return parse(s).toLocaleDateString('pt-BR')}
+const MSG0='Oi, {nome}! Passando para lembrar do seu corte {dia} às {hora}. Você confirma pra mim?';
+function tpl(){return (S.cfg&&S.cfg.msg)||MSG0}
+function fillMsg(a,t){return (t||tpl()).split('{nome}').join(a.name.trim().split(' ')[0]).split('{dia}').join(when(a)).split('{data}').join(fdt(a.date).slice(0,5)).split('{hora}').join(a.time).split('{valor}').join(brl(a.price))}
+function mSheet(){$('#sh').innerHTML=`<h3>Mensagem de lembrete</h3><div class="tg" style="margin:-6px 0 8px">Escreva do seu jeito. Toque nos botões para inserir os campos que o app preenche sozinho em cada cliente.</div><textarea id="mt" rows="5" oninput="mPrev()">${esc(tpl())}</textarea><div class="btns" style="margin-top:10px">${[['{nome}','Nome'],['{dia}','Dia'],['{data}','Data'],['{hora}','Hora'],['{valor}','Valor']].map(x=>`<button class="b-gh" style="min-width:0;padding:9px 12px" onclick="mIns('${x[0]}')">${x[1]}</button>`).join('')}</div><label>Como vai aparecer</label><div class="fx" style="display:block;white-space:pre-wrap" id="mp"></div><div class="tg" id="er"></div><div class="btns"><button class="b-gh" onclick="settings()">Voltar</button><button class="b-gh" onclick="mReset()">Padrão</button><button class="b-pr" onclick="mSave()">Salvar</button></div>`;
+$('#bk').style.display='block';$('#sh').style.display='block';mPrev()}
+function mIns(tg){const e=$('#mt'),s=e.selectionStart==null?e.value.length:e.selectionStart,f=e.selectionEnd==null?s:e.selectionEnd;e.value=e.value.slice(0,s)+tg+e.value.slice(f);e.focus();e.selectionStart=e.selectionEnd=s+tg.length;mPrev()}
+function mPrev(){const m=new Date();m.setDate(m.getDate()+1);$('#mp').textContent=fillMsg({name:'João Silva',date:iso(m),time:'20:00',price:35},$('#mt').value)}
+function mSave(){const v=$('#mt').value.trim();if(!v){$('#er').textContent='A mensagem não pode ficar vazia.';return}S.cfg=S.cfg||{};S.cfg.msg=v===MSG0?'':v;save();$('#er').textContent='Mensagem salva.'}
+function mReset(){$('#mt').value=MSG0;mPrev()}
 function cStats(c){const k=c.name.trim().toLowerCase(),l=S.ap.filter(a=>a.name.trim().toLowerCase()===k&&a.st!=='p').sort((a,b)=>byTime(b,a));return{l,done:l.filter(a=>a.st==='d').length,no:l.filter(a=>a.st==='n').length,late:l.filter(a=>a.late==='a').length,last:l.find(a=>a.st==='d')}}
 function flag(name){const k=name.trim().toLowerCase();let l=0,n=0;S.ap.forEach(a=>{if(a.st!=='p'&&a.name.trim().toLowerCase()===k){if(a.late==='a')l++;if(a.st==='n')n++}});return l>=2||n>=2}
 function pontSec(a){const c=S.cl.find(x=>x.name.trim().toLowerCase()===a.name.trim().toLowerCase()),s=c?cStats(c):null;
@@ -210,11 +219,11 @@ function bkCopy(){const j=JSON.stringify(S);(navigator.clipboard?navigator.clipb
 function bkFile(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#bx').value=r.result;$('#er').textContent='Arquivo carregado. Toque em Restaurar.'};r.readAsText(f)}
 function bkRest(){let d;try{d=JSON.parse($('#bx').value)}catch(e){$('#er').textContent='Backup inválido.';return}
 if(!d||!Array.isArray(d.ap)||!Array.isArray(d.rec)){$('#er').textContent='Backup inválido.';return}
-ask('Restaurar este backup? Os dados atuais serão substituídos.',()=>{S={ap:d.ap,rec:d.rec,cl:d.cl||[],bl:d.bl||[],st:d.st||[]};save();gen();closeS();render()})}
+ask('Restaurar este backup? Os dados atuais serão substituídos.',()=>{S={ap:d.ap,rec:d.rec,cl:d.cl||[],bl:d.bl||[],st:d.st||[],cfg:d.cfg||{}};save();gen();closeS();render()})}
 function ph(a){return a.phone||(S.cl.find(c=>c.name.toLowerCase()===a.name.toLowerCase())||{}).phone||''}
 function when(a){const t=iso(new Date()),m=new Date();m.setDate(m.getDate()+1);return a.date===t?'hoje':a.date===iso(m)?'amanhã':parse(a.date).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'})}
 function waLink(a,short){let p=ph(a).replace(/\D/g,'');if(p.length<=11)p='55'+p;
-const msg=`Oi, ${a.name.split(' ')[0]}! Passando para lembrar do seu corte ${when(a)} às ${a.time}. Você confirma pra mim?`;
+const msg=fillMsg(a);
 return `<a class="lk ${short?'s':''}" href="https://wa.me/${p}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" onclick="mark('${a.id}')">${short?'Enviar':'Lembrar no WhatsApp'}</a>`}
 function mark(id){const a=S.ap.find(x=>x.id===id);if(a){a.rem=1;save()}}
 function remSheet(){const t=iso(new Date()),m=new Date();m.setDate(m.getDate()+1);const tm=iso(m);
@@ -258,7 +267,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.
 function applyTheme(t){document.documentElement.dataset.theme=t;const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='light'?'#f4f4f2':'#111214'}
 function curTheme(){try{return localStorage.getItem('agenda-tema')||'dark'}catch(e){return'dark'}}
 function setTheme(t){try{localStorage.setItem('agenda-tema',t)}catch(e){}applyTheme(t);settings()}
-function settings(){const t=curTheme();$('#sh').innerHTML=`<h3>Ajustes</h3><label>Tema</label><div class="btns"><button class="${t==='dark'?'b-pr':'b-gh'}" onclick="setTheme('dark')">Escuro</button><button class="${t==='light'?'b-pr':'b-gh'}" onclick="setTheme('light')">Claro</button></div><label>Agenda</label><div class="btns"><button class="b-gh" onclick="bSheet()">Bloqueios de horário</button></div><label>Dados</label><div class="btns"><button class="b-gh" onclick="bkSheet()">Backup e restaurar</button></div><div class="tg">Último backup: ${lastBk()}</div><div class="btns"><button class="b-gh" onclick="closeS()">Fechar</button></div>`;$('#bk').style.display='block';$('#sh').style.display='block'}
+function settings(){const t=curTheme();$('#sh').innerHTML=`<h3>Ajustes</h3><label>Tema</label><div class="btns"><button class="${t==='dark'?'b-pr':'b-gh'}" onclick="setTheme('dark')">Escuro</button><button class="${t==='light'?'b-pr':'b-gh'}" onclick="setTheme('light')">Claro</button></div><label>Agenda</label><div class="btns"><button class="b-gh" onclick="bSheet()">Bloqueios de horário</button></div><label>WhatsApp</label><div class="btns"><button class="b-gh" onclick="mSheet()">Mensagem de lembrete</button></div><label>Dados</label><div class="btns"><button class="b-gh" onclick="bkSheet()">Backup e restaurar</button></div><div class="tg">Último backup: ${lastBk()}</div><div class="btns"><button class="b-gh" onclick="closeS()">Fechar</button></div>`;$('#bk').style.display='block';$('#sh').style.display='block'}
 applyTheme(curTheme());
 load();gen();render();setInterval(()=>{if($('#sh').style.display!=='block')render()},60000);
 </script>
