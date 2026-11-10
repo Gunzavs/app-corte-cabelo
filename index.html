@@ -32,7 +32,7 @@ h2{font-size:13px;color:var(--mut);font-weight:600;margin:22px 4px 10px}
 .n .r b{text-decoration:line-through;color:var(--mut)}
 .empty{color:var(--mut);text-align:center;padding:28px 10px;border:1px dashed var(--line);border-radius:14px}
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;background:var(--nav);border-top:1px solid var(--line);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:5}
-nav button{flex:1;background:none;border:0;color:var(--mut);font:600 12px Manrope,sans-serif;padding:8px 0;cursor:pointer}
+nav button{flex:1;background:none;border:0;color:var(--mut);font:600 11px Manrope,sans-serif;padding:8px 0;cursor:pointer}
 nav button.on{color:var(--tx)}
 nav button.on::after{content:"";display:block;width:18px;height:2px;background:var(--ac);margin:6px auto 0;border-radius:2px}
 .fab{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;background:var(--ac);color:var(--on);border:0;font-size:28px;font-weight:500;z-index:6;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)}
@@ -69,7 +69,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac)}
 <main id="v"></main>
 <button class="fab" onclick="fab()" aria-label="Adicionar">+</button>
 <nav>
-<button data-t="hoje" class="on">Hoje</button><button data-t="agenda">Agenda</button><button data-t="cl">Clientes</button><button data-t="hist">Histórico</button><button data-t="fixos">Fixos</button>
+<button data-t="hoje" class="on">Hoje</button><button data-t="agenda">Agenda</button><button data-t="cl">Clientes</button><button data-t="es">Estoque</button><button data-t="hist">Histórico</button><button data-t="fixos">Fixos</button>
 </nav>
 <div id="bk" onclick="closeS()"></div><div id="sh"></div>
 <script>
@@ -82,7 +82,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const DIAS=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
 let S={ap:[],rec:[]},tab='hoje',cm=new Date(),hm=new Date(),sel=iso(new Date());
-function load(){try{const r=localStorage.getItem('agenda-cortes');if(r)S=JSON.parse(r)}catch(e){}if(!S.cl)S.cl=[];if(!S.bl)S.bl=[]}
+function load(){try{const r=localStorage.getItem('agenda-cortes');if(r)S=JSON.parse(r)}catch(e){}if(!S.cl)S.cl=[];if(!S.bl)S.bl=[];if(!S.st)S.st=[]}
 function save(){try{localStorage.setItem('agenda-cortes',JSON.stringify(S))}catch(e){}}
 function gen(until){const td=new Date();td.setHours(0,0,0,0);let ch=false;let end=new Date(td.getFullYear()+1,td.getMonth(),td.getDate());if(until&&until>end)end=until;const nd=Math.round((end-td)/864e5);const have=new Set(S.ap.filter(a=>a.rid).map(a=>a.rid+a.date));
 S.rec.forEach(r=>{if(!r.on)return;const st=parse(r.start),ds=[];
@@ -95,20 +95,20 @@ const byTime=(a,b)=>(a.date+a.time).localeCompare(b.date+b.time);
 const isLate=a=>a.st==='p'&&new Date(a.date+'T'+a.time)<new Date();
 function card(a){const cls=a.st==='d'?'d':a.st==='n'?'n':isLate(a)?'late':'';
 const lab=a.st==='d'?'Cortou':a.st==='n'?'Não veio':isLate(a)?'Confirmar':a.rem?'Lembrado':'Aguardando';
-const meta=[a.dur?a.dur+' min':'',a.notes].filter(Boolean).map(esc).join(' • ')||'Sem observações';
-return `<div class="c ${cls}" onclick="sheet('${a.id}')"><div class="t">${a.time}</div><div class="m"><b>${esc(a.name)}${a.rid?' ↻':''}</b><small>${meta}</small></div><div class="r"><b>${brl(a.price)}</b><span class="bd">${lab}</span></div></div>`}
+const meta=[a.dur?a.dur+' min':'',...(a.sales||[]).map(s=>s.name+(s.qty>1?' x'+s.qty:'')),a.late==='a'?'Atrasou'+(a.lm?' '+a.lm+' min':''):'',a.notes].filter(Boolean).map(esc).join(' • ')||'Sem observações';
+return `<div class="c ${cls}" onclick="sheet('${a.id}')"><div class="t">${a.time}</div><div class="m"><b>${esc(a.name)}${a.rid?' ↻':''}${a.st==='p'&&flag(a.name)?' <span style="color:var(--wa)">⚠</span>':''}</b><small>${meta}</small></div><div class="r"><b>${brl((+a.price||0)+saleTot(a))}</b><span class="bd">${lab}</span></div></div>`}
 function list(arr,msg){return arr.length?arr.sort(byTime).map(card).join(''):`<div class="empty">${msg}</div>`}
 function render(){
 document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 const v=$('#v'),today=iso(new Date());
 if(tab==='hoje'){
-const day=S.ap.filter(a=>a.date===today),gan=day.filter(a=>a.st==='d').reduce((s,a)=>s+(+a.price||0),0),pend=day.filter(a=>a.st==='p').length;
+const day=S.ap.filter(a=>a.date===today),gan=day.filter(a=>a.st==='d').reduce((s,a)=>s+(+a.price||0)+saleTot(a),0),pend=day.filter(a=>a.st==='p').length;
 $('#ttl').textContent='Hoje';$('#sub').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
 const prox=S.ap.filter(a=>a.date>today&&a.st==='p').sort(byTime).slice(0,6);
 v.innerHTML=`<div class="sum"><div class="box"><span>Cortes hoje</span><b>${day.length}</b></div><div class="box"><span>A confirmar</span><b>${pend}</b></div><div class="box"><span>Ganho hoje</span><b>${brl(gan)}</b></div></div>
 <button class="ghost" style="width:100%" onclick="remSheet()">Lembrar clientes no WhatsApp</button>
 <h2>Lista do dia</h2>${blkCards(today)}${list(day,'Nenhum corte marcado para hoje. Toque em + para agendar.')}
-<h2>Próximos cortes</h2>${prox.length?prox.map(a=>`<div class="c" onclick="sheet('${a.id}')"><div class="t" style="min-width:74px;font-size:13px">${parse(a.date).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}<br>${a.time}</div><div class="m"><b>${esc(a.name)}${a.rid?' ↻':''}</b><small>${esc(a.notes)||'Sem observações'}</small></div><div class="r"><b>${brl(a.price)}</b></div></div>`).join(''):'<div class="empty">Sem próximos agendamentos.</div>'}`;
+<h2>Próximos cortes</h2>${prox.length?prox.map(a=>`<div class="c" onclick="sheet('${a.id}')"><div class="t" style="min-width:74px;font-size:13px">${parse(a.date).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}<br>${a.time}</div><div class="m"><b>${esc(a.name)}${a.rid?' ↻':''}${flag(a.name)?' <span style="color:var(--wa)">⚠</span>':''}</b><small>${esc(a.notes)||'Sem observações'}</small></div><div class="r"><b>${brl(a.price)}</b></div></div>`).join(''):'<div class="empty">Sem próximos agendamentos.</div>'}`;
 }else if(tab==='agenda'){
 $('#ttl').textContent='Agenda';$('#sub').textContent='Calendário de cortes';
 const y=cm.getFullYear(),m=cm.getMonth(),f=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate();let g='';
@@ -122,14 +122,18 @@ v.innerHTML=`<div class="mn"><button onclick="cm=new Date(cm.getFullYear(),cm.ge
 }else if(tab==='hist'){
 $('#ttl').textContent='Histórico';$('#sub').textContent='Resumo do mês';
 const y=hm.getFullYear(),m=hm.getMonth(),pre=y+'-'+pad(m+1),ms=S.ap.filter(a=>a.date.startsWith(pre)&&a.st!=='p');
-const dn=ms.filter(a=>a.st==='d'),tot=dn.reduce((s,a)=>s+(+a.price||0),0),mins=dn.reduce((s,a)=>s+(+a.dur||0),0);
+const dn=ms.filter(a=>a.st==='d'),tot=dn.reduce((s,a)=>s+(+a.price||0),0),mins=dn.reduce((s,a)=>s+(+a.dur||0),0),pr=dn.reduce((s,a)=>s+saleTot(a),0),pl=dn.reduce((s,a)=>s+(a.sales||[]).reduce((t,x)=>t+(x.price-(x.cost||0))*x.qty,0),0);
 v.innerHTML=`<div class="mn"><button onclick="hm=new Date(hm.getFullYear(),hm.getMonth()-1,1);render()">‹</button><b>${hm.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</b><button onclick="hm=new Date(hm.getFullYear(),hm.getMonth()+1,1);render()">›</button></div>
-<div class="sum"><div class="box"><span>Total ganho</span><b style="color:var(--ok)">${brl(tot)}</b></div><div class="box"><span>Cortes</span><b>${dn.length}</b></div><div class="box"><span>Faltas</span><b>${ms.length-dn.length}</b></div></div>
-<div class="sum"><div class="box"><span>Média por corte</span><b>${brl(dn.length?tot/dn.length:0)}</b></div><div class="box"><span>Tempo total</span><b>${Math.floor(mins/60)}h${pad(mins%60)}</b></div></div>
+<div class="sum"><div class="box"><span>Total ganho</span><b style="color:var(--ok)">${brl(tot+pr)}</b></div><div class="box"><span>Cortes</span><b>${dn.length}</b></div><div class="box"><span>Faltas</span><b>${ms.length-dn.length}</b></div></div>
+<div class="sum"><div class="box"><span>Média por corte</span><b>${brl(dn.length?tot/dn.length:0)}</b></div><div class="box"><span>Tempo total</span><b>${Math.floor(mins/60)}h${pad(mins%60)}</b></div><div class="box"><span>Produtos</span><b>${brl(pr)}</b><span>lucro ${brl(pl)}</span></div></div>
 <h2>Cortes do mês</h2>${ms.length?ms.sort((a,b)=>byTime(b,a)).map(a=>card(a)).join(''):'<div class="empty">Nenhum corte confirmado neste mês.</div>'}`;
+}else if(tab==='es'){
+const mo=today.slice(0,7),vm=S.ap.filter(a=>a.st==='d'&&a.date.startsWith(mo)).reduce((s,a)=>s+saleTot(a),0),lw=S.st.filter(p=>p.qty<=(p.min||0)).length,val=S.st.reduce((s,p)=>s+p.qty*(p.price||0),0);
+$('#ttl').textContent='Estoque';$('#sub').textContent=S.st.length+' produtos';
+v.innerHTML=`<div class="sum"><div class="box"><span>Valor em estoque</span><b>${brl(val)}</b></div><div class="box"><span>Vendido no mês</span><b>${brl(vm)}</b></div><div class="box"><span>Estoque baixo</span><b${lw?' style="color:var(--no)"':''}>${lw}</b></div></div>`+(S.st.length?S.st.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{const lo=p.qty<=(p.min||0);return `<div class="fx" onclick="pSheet('${p.id}')" style="cursor:pointer"><div class="m"><b>${esc(p.name)}</b><small>${brl(p.price)} por unidade${p.cost?' • custo '+brl(p.cost):''}</small></div><div class="r"><b${lo?' style="color:var(--no)"':''}>${p.qty} un.</b><span class="bd" style="color:var(--no)">${lo?(p.qty<=0?'Acabou':'Estoque baixo'):''}</span></div></div>`}).join(''):'<div class="empty">Nenhum produto. Toque em + para cadastrar (ex.: pomada, óleo de barba).</div>');
 }else if(tab==='cl'){
 $('#ttl').textContent='Clientes';$('#sub').textContent=S.cl.length+' cadastrados';
-v.innerHTML=S.cl.length?S.cl.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{const n=S.ap.filter(a=>a.name.toLowerCase()===c.name.toLowerCase()&&a.st==='d').length;return `<div class="fx" onclick="cSheet('${c.id}')" style="cursor:pointer"><div class="m"><b>${esc(c.name)}</b><small>${esc(c.phone)||'Sem telefone'} • ${n} cortes</small></div><div class="r"><b>${c.price?brl(c.price):''}</b></div></div>`}).join(''):'<div class="empty">Nenhum cliente cadastrado. Toque em + para cadastrar.</div>';
+v.innerHTML=S.cl.length?S.cl.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{const s=cStats(c),al=s.late>=2||s.no>=2;return `<div class="fx" onclick="cHist('${c.id}')" style="cursor:pointer"><div class="m"><b>${esc(c.name)}${al?' <span style="color:var(--wa)">⚠</span>':''}</b><small>${esc(c.phone)||'Sem telefone'} • ${s.done} cortes${s.last?' • último '+fdt(s.last.date):''}</small></div><div class="r"><b>${c.price?brl(c.price):''}</b><span class="bd" style="color:var(--wa)">${s.late?'Atrasou '+s.late+'x':''}</span></div></div>`}).join(''):'<div class="empty">Nenhum cliente cadastrado. Toque em + para cadastrar.</div>';
 }else{
 $('#ttl').textContent='Fixos';$('#sub').textContent='Agendamentos automáticos';
 v.innerHTML=S.rec.length?S.rec.map(r=>`<div class="fx"><div class="m"><b>${esc(r.name)}</b><small>${r.freq==='w'?'Toda '+DIAS[r.wd]:r.freq==='b'?'A cada 2 semanas, '+DIAS[r.wd]:'Todo dia '+r.dom} às ${r.time} • ${brl(r.price)}${r.on?'':' • pausado'}</small></div><button class="ghost" onclick="togRec('${r.id}')">${r.on?'Pausar':'Ativar'}</button><button class="ghost" onclick="delRec('${r.id}')">Excluir</button></div>`).join('')+'<div class="tg">Os cortes fixos aparecem sozinhos nos próximos meses e anos, inclusive ao navegar pelo calendário. Ao excluir o fixo, todos os cortes futuros dele somem de uma vez.</div>':'<div class="empty">Nenhum cliente fixo. Ao agendar, escolha repetir toda semana ou todo mês.</div>';
@@ -143,7 +147,8 @@ ${id||!S.cl.length?'':`<label>Cliente</label><select id="fc" onchange="pickC(thi
 <label>Telefone (WhatsApp)</label><input id="fh" type="tel" inputmode="tel" value="${esc(a.phone)}" placeholder="(11) 90000-0000">
 <div class="row"><div><label>Data</label><input id="fd" type="date" value="${a.date}"></div><div><label>Hora</label><input id="ft" type="time" value="${a.time}"></div></div>
 <div class="row"><div><label>Valor (R$)</label><input id="fp" type="number" inputmode="decimal" value="${a.price}" placeholder="0,00"></div><div><label>Tempo do corte (min)</label><input id="fu" type="number" inputmode="numeric" value="${a.dur||''}" placeholder="0"></div></div>
-<label>Observações</label><textarea id="fo" rows="2" placeholder="Ex.: degradê 2, barba na régua">${esc(a.notes)}</textarea>
+<label>Observações do corte</label><textarea id="fo" rows="2" placeholder="Ex.: degradê 2, barba na régua">${esc(a.notes)}</textarea>
+${id?pontSec(a)+prodSec(a,id):''}
 ${id?'':`<label>Repetir</label><select id="fr"><option value="">Não repetir</option><option value="w">Toda semana neste dia e horário</option><option value="b">1 semana sim, 1 semana não</option><option value="m">Todo mês neste dia</option></select>`}
 <div class="btns">${id?`<button class="b-gh" onclick="timer('${id}')">${run?'Finalizar corte':'Iniciar corte'}</button>`:''}</div>
 ${id&&ph(a)&&a.st==='p'?`<div class="btns">${waLink(a)}</div>`:''}
@@ -151,7 +156,36 @@ ${id?`<div class="btns"><button class="b-ok" onclick="setSt('${id}','d')">Cortou
 <div class="tg" id="er" style="color:var(--no)"></div><div class="btns"><button class="b-gh" onclick="closeS()">Fechar</button>${id?`<button class="b-pr" onclick="saveAp('${id}')">Salvar</button><button class="b-gh" onclick="delAp('${id}')">Excluir</button>`:`<button class="b-pr" onclick="saveAp()">Agendar</button>`}</div>${a.rid?`<div class="btns"><button class="b-wa" onclick="delRec('${a.rid}',1)">Encerrar repetição deste cliente</button></div>`:''}`;
 $('#bk').style.display='block';$('#sh').style.display='block'}
 function closeS(){$('#bk').style.display='none';$('#sh').style.display='none'}
-function fab(){if(tab==='cl')cSheet();else sheet(null,sel)}
+function fab(){if(tab==='cl')cSheet();else if(tab==='es')pSheet();else sheet(null,sel)}
+function saleTot(a){return (a.sales||[]).reduce((s,x)=>s+x.price*x.qty,0)}
+function fdt(s){return parse(s).toLocaleDateString('pt-BR')}
+function cStats(c){const k=c.name.trim().toLowerCase(),l=S.ap.filter(a=>a.name.trim().toLowerCase()===k&&a.st!=='p').sort((a,b)=>byTime(b,a));return{l,done:l.filter(a=>a.st==='d').length,no:l.filter(a=>a.st==='n').length,late:l.filter(a=>a.late==='a').length,last:l.find(a=>a.st==='d')}}
+function flag(name){const k=name.trim().toLowerCase();let l=0,n=0;S.ap.forEach(a=>{if(a.st!=='p'&&a.name.trim().toLowerCase()===k){if(a.late==='a')l++;if(a.st==='n')n++}});return l>=2||n>=2}
+function pontSec(a){const c=S.cl.find(x=>x.name.trim().toLowerCase()===a.name.trim().toLowerCase()),s=c?cStats(c):null;
+return (s&&(s.late>=2||s.no>=2)?`<div class="tg" style="color:var(--wa);margin-top:10px">⚠ Atenção: este cliente já atrasou ${s.late}x e faltou ${s.no}x.</div>`:'')+`<div class="row"><div><label>Pontualidade</label><select id="fl"><option value="">Não informado</option><option value="o" ${a.late==='o'?'selected':''}>Chegou no horário</option><option value="a" ${a.late==='a'?'selected':''}>Atrasou</option></select></div><div><label>Atraso (min)</label><input id="fm" type="number" inputmode="numeric" value="${a.lm||''}" placeholder="0"></div></div>`+(c?`<div class="btns"><button class="b-gh" onclick="cHist('${c.id}')">Ver histórico do cliente</button></div>`:'')}
+function cHist(id){const c=S.cl.find(x=>x.id===id),s=cStats(c),k=c.name.trim().toLowerCase(),nx=S.ap.filter(a=>a.name.trim().toLowerCase()===k&&a.st==='p').sort(byTime)[0],L=s.last;
+$('#sh').innerHTML=`<h3>${esc(c.name)}</h3><div class="tg" style="margin:-8px 0 10px">${esc(c.phone)||'Sem telefone'}</div>${(s.late>=2||s.no>=2)?`<div class="box" style="border-color:var(--wa);margin-bottom:10px"><b style="color:var(--wa);font-size:14px">⚠ Fique esperto</b><span>${s.late?'Atrasou '+s.late+(s.late>1?' vezes':' vez'):''}${s.late&&s.no?' e ':''}${s.no?'faltou '+s.no+(s.no>1?' vezes':' vez'):''}.</span></div>`:''}
+<div class="sum"><div class="box"><span>Cortes</span><b>${s.done}</b></div><div class="box"><span>Atrasos</span><b>${s.late}</b></div><div class="box"><span>Faltas</span><b>${s.no}</b></div></div>
+<label>Último corte</label>${L?`<div class="fx" style="display:block"><b>${fdt(L.date)} às ${L.time}</b><div class="tg">${esc(L.notes)||'Sem observação do corte'}${(L.sales||[]).length?' • Comprou: '+L.sales.map(x=>esc(x.name)+(x.qty>1?' x'+x.qty:'')).join(', '):''}</div></div>`:'<div class="empty">Ainda não tem corte registrado.</div>'}
+${nx?`<label>Próximo agendado</label><div class="fx" style="display:block"><b>${fdt(nx.date)} às ${nx.time}</b></div>`:''}
+<label>Histórico</label>${s.l.length?s.l.map(a=>`<div class="c ${a.st==='d'?'d':'n'}" onclick="sheet('${a.id}')"><div class="t" style="font-size:13px;min-width:62px">${parse(a.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})}</div><div class="m"><b>${esc(a.notes)||'Sem observação'}</b><small>${[a.late==='a'?'Atrasou'+(a.lm?' '+a.lm+' min':''):a.late==='o'?'No horário':'',...(a.sales||[]).map(x=>x.name+(x.qty>1?' x'+x.qty:'')),a.dur?a.dur+' min':''].filter(Boolean).map(esc).join(' • ')}</small></div><div class="r"><b>${brl((+a.price||0)+saleTot(a))}</b><span class="bd">${a.st==='d'?'Cortou':'Não veio'}</span></div></div>`).join(''):'<div class="empty">Sem histórico ainda.</div>'}
+<div class="btns"><button class="b-gh" onclick="closeS()">Fechar</button><button class="b-gh" onclick="cSheet('${id}')">Editar</button><button class="b-pr" onclick="closeS();sheet(null,sel,'${id}')">Agendar corte</button></div>`;
+$('#bk').style.display='block';$('#sh').style.display='block'}
+function restock(a){(a.sales||[]).forEach(s=>{const p=S.st.find(x=>x.id===s.pid);if(p)p.qty+=s.qty})}
+function prodSec(a,id){const ps=S.st.filter(p=>p.qty>0);
+return `<label>Produtos vendidos</label>`+(a.sales||[]).map((s,i)=>`<div class="fx" style="padding:8px 12px"><div class="m"><b>${esc(s.name)} x${s.qty}</b><small>${brl(s.price*s.qty)}</small></div><button class="ghost" onclick="rmSale('${id}',${i})">Remover</button></div>`).join('')+(ps.length?`<div class="row"><div style="flex:3"><select id="sp">${ps.map(p=>`<option value="${p.id}">${esc(p.name)} (${p.qty}) • ${brl(p.price)}</option>`).join('')}</select></div><div><input id="sq" type="number" inputmode="numeric" min="1" value="1"></div></div><div class="btns"><button class="b-gh" onclick="addSale('${id}')">Adicionar produto</button></div>`:'<div class="tg">Sem produtos em estoque. Cadastre na aba Estoque.</div>')}
+function addSale(id){const a=S.ap.find(x=>x.id===id),p=S.st.find(x=>x.id===$('#sp').value),q=Math.max(1,parseInt($('#sq').value)||1);
+if(!p)return;if(q>p.qty){$('#er').textContent='Só tem '+p.qty+' de '+p.name+' em estoque.';return}
+Object.assign(a,rd());a.sales=a.sales||[];const e=a.sales.find(s=>s.pid===p.id);if(e)e.qty+=q;else a.sales.push({pid:p.id,name:p.name,qty:q,price:p.price||0,cost:p.cost||0});
+p.qty-=q;save();sheet(id);render()}
+function rmSale(id,i){const a=S.ap.find(x=>x.id===id),s=a.sales[i];Object.assign(a,rd());const p=S.st.find(x=>x.id===s.pid);if(p)p.qty+=s.qty;a.sales.splice(i,1);save();sheet(id);render()}
+function pSheet(id){const p=id?S.st.find(x=>x.id===id):{name:'',qty:'',price:'',cost:'',min:''};
+$('#sh').innerHTML=`<h3>${id?'Produto':'Novo produto'}</h3><label>Nome</label><input id="pn" value="${esc(p.name)}" placeholder="Ex.: Pomada modeladora"><div class="row"><div><label>Quantidade em estoque</label><input id="pq" type="number" inputmode="numeric" value="${p.qty}" placeholder="0"></div><div><label>Avisar quando restar</label><input id="pm" type="number" inputmode="numeric" value="${p.min}" placeholder="2"></div></div><div class="row"><div><label>Preço de venda (R$)</label><input id="pp" type="number" inputmode="decimal" value="${p.price}" placeholder="0,00"></div><div><label>Custo (R$, opcional)</label><input id="pc" type="number" inputmode="decimal" value="${p.cost}" placeholder="0,00"></div></div><div class="tg" id="er" style="color:var(--no)"></div><div class="btns"><button class="b-gh" onclick="closeS()">Fechar</button><button class="b-pr" onclick="saveP('${id||''}')">Salvar</button></div>${id?`<div class="btns"><button class="b-gh" onclick="delP('${id}')">Excluir produto</button></div>`:''}`;
+$('#bk').style.display='block';$('#sh').style.display='block'}
+function saveP(id){const f={name:$('#pn').value.trim(),qty:parseInt($('#pq').value)||0,min:parseInt($('#pm').value)||0,price:+$('#pp').value||0,cost:+$('#pc').value||0};
+if(!f.name){$('#er').textContent='Digite o nome do produto.';return}
+if(id)Object.assign(S.st.find(p=>p.id===id),f);else S.st.push({id:uid(),...f});save();closeS();render()}
+function delP(id){ask('Excluir este produto? As vendas já registradas continuam no histórico.',()=>{S.st=S.st.filter(p=>p.id!==id);save();closeS();render()})}
 function tm(t){const [h,m]=t.split(':').map(Number);return h*60+m}
 function inB(b,date,time,dur){const w=parse(date).getDay();if(date<b.d1||(b.d2&&date>b.d2)||(b.wd!==''&&+b.wd!==w))return false;if(!b.t1)return true;const s=tm(time),e=s+(dur||40);return s<tm(b.t2)&&tm(b.t1)<e}
 function blkAt(date,time,dur){return S.bl.find(b=>inB(b,date,time,dur))}
@@ -176,7 +210,7 @@ function bkCopy(){const j=JSON.stringify(S);(navigator.clipboard?navigator.clipb
 function bkFile(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#bx').value=r.result;$('#er').textContent='Arquivo carregado. Toque em Restaurar.'};r.readAsText(f)}
 function bkRest(){let d;try{d=JSON.parse($('#bx').value)}catch(e){$('#er').textContent='Backup inválido.';return}
 if(!d||!Array.isArray(d.ap)||!Array.isArray(d.rec)){$('#er').textContent='Backup inválido.';return}
-ask('Restaurar este backup? Os dados atuais serão substituídos.',()=>{S={ap:d.ap,rec:d.rec,cl:d.cl||[],bl:d.bl||[]};save();gen();closeS();render()})}
+ask('Restaurar este backup? Os dados atuais serão substituídos.',()=>{S={ap:d.ap,rec:d.rec,cl:d.cl||[],bl:d.bl||[],st:d.st||[]};save();gen();closeS();render()})}
 function ph(a){return a.phone||(S.cl.find(c=>c.name.toLowerCase()===a.name.toLowerCase())||{}).phone||''}
 function when(a){const t=iso(new Date()),m=new Date();m.setDate(m.getDate()+1);return a.date===t?'hoje':a.date===iso(m)?'amanhã':parse(a.date).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'})}
 function waLink(a,short){let p=ph(a).replace(/\D/g,'');if(p.length<=11)p='55'+p;
@@ -197,7 +231,7 @@ if(id)Object.assign(S.cl.find(c=>c.id===id),f);else S.cl.push({id:uid(),...f});
 save();closeS();render()}
 function delC(id){ask('Excluir este cliente? Os cortes já agendados continuam.',()=>{S.cl=S.cl.filter(c=>c.id!==id);save();closeS();render()})}
 function pickC(id){const c=S.cl.find(x=>x.id===id);if(!c)return;$('#fn').value=c.name;$('#fh').value=c.phone||'';$('#fp').value=c.price||'';$('#fo').value=c.notes||''}
-function rd(){return{name:$('#fn').value.trim(),phone:$('#fh').value.trim(),date:$('#fd').value,time:$('#ft').value,price:+$('#fp').value||0,dur:+$('#fu').value||0,notes:$('#fo').value.trim()}}
+function rd(){return{name:$('#fn').value.trim(),phone:$('#fh').value.trim(),late:($('#fl')||{}).value||'',lm:+(($('#fm')||{}).value)||0,date:$('#fd').value,time:$('#ft').value,price:+$('#fp').value||0,dur:+$('#fu').value||0,notes:$('#fo').value.trim()}}
 function saveAp(id){const f=rd();if(!f.name||!f.date||!f.time){$('#er').textContent='Preencha nome, data e hora.';return}
 const cf=clash(f,id);if(cf){if(cf.blk){$('#er').textContent='Horário bloqueado: '+cf.blk.title;return}const k=f.date+f.time+f.name;if(window._ck!==k){window._ck=k;$('#er').textContent='Choque com '+cf.ap.name+' às '+cf.ap.time+'. Toque de novo no botão para manter os dois.';return}}
 if(id){Object.assign(S.ap.find(a=>a.id===id),f)}
@@ -206,19 +240,19 @@ if(rp){const d=parse(f.date),r={id:uid(),name:f.name,phone:f.phone,time:f.time,p
 S.ap.push(a)}
 {const c=S.cl.find(c=>c.name.toLowerCase()===f.name.toLowerCase());if(!c)S.cl.push({id:uid(),name:f.name,phone:f.phone,price:f.price,notes:f.notes});else if(!c.phone&&f.phone)c.phone=f.phone}
 save();gen();closeS();if(!id)sel=f.date;render()}
-function setSt(id,st){const a=S.ap.find(x=>x.id===id);Object.assign(a,rd());a.st=st;if(st==='d'&&a.t0){a.dur=Math.max(1,Math.round((Date.now()-a.t0)/60000));a.t0=null}save();closeS();render()}
+function setSt(id,st){const a=S.ap.find(x=>x.id===id);Object.assign(a,rd());a.st=st;if(st==='n'&&a.sales&&a.sales.length){restock(a);a.sales=[]}if(st==='d'&&a.t0){a.dur=Math.max(1,Math.round((Date.now()-a.t0)/60000));a.t0=null}save();closeS();render()}
 function timer(id){const a=S.ap.find(x=>x.id===id);Object.assign(a,rd());
 if(!a.t0){a.t0=Date.now()}else{a.dur=Math.max(1,Math.round((Date.now()-a.t0)/60000));a.t0=null}
 save();sheet(id);render()}
 function ask(msg,fn){window._ok=fn;$('#sh').innerHTML=`<h3>${msg}</h3><div class="btns"><button class="b-gh" onclick="closeS()">Cancelar</button><button class="b-no" onclick="_ok()">Confirmar</button></div>`;$('#bk').style.display='block';$('#sh').style.display='block'}
-function delOne(id){const a=S.ap.find(x=>x.id===id);if(a.rid){const r=S.rec.find(x=>x.id===a.rid);if(r)r.skip.push(a.date)}
+function delOne(id){const a=S.ap.find(x=>x.id===id);restock(a);if(a.rid){const r=S.rec.find(x=>x.id===a.rid);if(r)r.skip.push(a.date)}
 S.ap=S.ap.filter(x=>x.id!==id);save();closeS();render()}
 function delAp(id){const a=S.ap.find(x=>x.id===id);
 if(a.rid){$('#sh').innerHTML=`<h3>Excluir corte fixo</h3><div class="btns"><button class="b-gh" onclick="delOne('${id}')">Só este corte</button><button class="b-no" onclick="delRec('${a.rid}')">Apagar o fixo inteiro</button></div><div class="btns"><button class="b-gh" onclick="closeS()">Cancelar</button></div>`;return}
 ask('Excluir este corte?',()=>delOne(id))}
 function togRec(id){const r=S.rec.find(x=>x.id===id);r.on=!r.on;if(r.on)gen();save();render()}
 function delRec(id){ask('Apagar todos os agendamentos não confirmados deste cliente e encerrar a repetição? Os cortes já confirmados continuam no histórico.',()=>{
-S.ap=S.ap.filter(a=>!(a.rid===id&&a.st==='p'));
+S.ap.filter(a=>a.rid===id&&a.st==='p').forEach(restock);S.ap=S.ap.filter(a=>!(a.rid===id&&a.st==='p'));
 S.rec=S.rec.filter(r=>r.id!==id);S.ap.forEach(a=>{if(a.rid===id)delete a.rid});save();closeS();render()})}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render();scrollTo(0,0)});
 function applyTheme(t){document.documentElement.dataset.theme=t;const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='light'?'#f4f4f2':'#111214'}
