@@ -71,6 +71,9 @@ header .ghost svg{width:calc(20px*var(--bz,1));height:calc(20px*var(--bz,1))}
 a.lk.s{padding:calc(10px*var(--bz,1)) calc(14px*var(--bz,1))}
 .cal .x{font-size:calc(14px*var(--bz,1))}
 input[type=range]{padding:0;border:0;background:none;accent-color:var(--ac)}
+nav{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:1 0 auto;white-space:nowrap;padding:calc(8px*var(--bz,1)) calc(14px*var(--bz,1))}
 </style>
 </head>
 <body>
@@ -109,6 +112,7 @@ return `<div class="c ${cls}" onclick="sheet('${a.id}')"><div class="t">${a.time
 function list(arr,msg){return arr.length?arr.sort(byTime).map(card).join(''):`<div class="empty">${msg}</div>`}
 function render(){
 document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+const ob=document.querySelector('nav button.on'),nv=document.querySelector('nav');if(ob&&nv)nv.scrollTo({left:ob.offsetLeft-(nv.clientWidth-ob.offsetWidth)/2,behavior:'smooth'});
 const v=$('#v'),today=iso(new Date());
 if(tab==='hoje'){
 const day=S.ap.filter(a=>a.date===today),gan=day.filter(a=>a.st==='d').reduce((s,a)=>s+(+a.price||0)+saleTot(a),0),pend=day.filter(a=>a.st==='p').length;
